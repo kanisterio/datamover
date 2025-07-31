@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- cr.kanister.io_v1alpha1_datamoversession.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples

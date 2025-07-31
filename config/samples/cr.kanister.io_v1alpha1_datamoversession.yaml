@@ -1,0 +1,9 @@
+apiVersion: dm.cr.kanister.io/v1alpha1
+kind: DatamoverSession
+metadata:
+  labels:
+    app.kubernetes.io/name: datamover
+    app.kubernetes.io/managed-by: kustomize
+  name: datamoversession-sample
+spec:
+  # TODO(user): Add fields here

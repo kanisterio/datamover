@@ -1,0 +1,177 @@
+package controller
+
+import (
+	"bytes"
+	"context"
+	"io"
+	"strings"
+
+	"github.com/pkg/errors"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/client-go/kubernetes"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+)
+
+const (
+	sessionDataContainerName = "session-data-read"
+	// TODO: is there an alternative?
+	// FIXME: do we want to make this configurable??
+	sessionDataContainerImage = "busybox:latest"
+
+	sessionDataVolumeName       = "session-data"
+	sessionDataVolumeMountPoint = "/etc/session"
+
+	// TODO: make this configurable
+	sessionDataReadinessTimeout  = 600
+	sessionDataReadinessInterval = 5
+)
+
+// Checking whether session container is started and is passing the probes
+func isPodReady(pod corev1.Pod) bool {
+	if pod.Status.Phase == corev1.PodRunning {
+		return mainContainerReady(pod) && sidecarContainerReady(pod)
+	}
+	return false
+}
+
+func mainContainerReady(pod corev1.Pod) bool {
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		if containerStatus.Name == defaultContainerName {
+			// All probes need to succeed
+			return *containerStatus.Started && containerStatus.Ready
+		}
+	}
+	return false
+}
+
+func sidecarContainerReady(pod corev1.Pod) bool {
+	for _, containerStatus := range pod.Status.InitContainerStatuses {
+		if containerStatus.Name == sessionDataContainerName {
+			// All probes need to succeed
+			return *containerStatus.Started && containerStatus.Ready
+		}
+	}
+	return false
+}
+
+// Data being nil means that logs were not read successfully
+func (r *DatamoverSessionReconciler) fetchSessionData(ctx context.Context, pod corev1.Pod) (*string, error) {
+	// Currently using a single output run from sessionDataContainer sidecar
+	// TODO: support dynamic session data
+	return r.fetchSessionDataUsingSidecar(ctx, pod)
+}
+
+// Reasons for nil data:
+// Sidecar container not ready or missing
+// Error in k8s api fetching logs
+// Logs do not container start and stop sequences
+// Data may be empty and non-nil
+func (r *DatamoverSessionReconciler) fetchSessionDataUsingSidecar(ctx context.Context, pod corev1.Pod) (*string, error) {
+	for _, containerStatus := range pod.Status.InitContainerStatuses {
+		if containerStatus.Name == sessionDataContainerName {
+			logs, err := r.getPodLogs(ctx, pod, sessionDataContainerName)
+			if err != nil {
+				return nil, errors.Wrap(err, "Failed to read pod logs")
+			}
+
+			log.Log.Info("Pod logs: ", "log", logs)
+
+			data := getDataFromLogs(logs)
+			return data, nil
+		}
+	}
+	return nil, nil
+}
+
+func getDataFromLogs(logs string) *string {
+	start := strings.LastIndex(logs, "---")
+	end := strings.LastIndex(logs, "___")
+
+	if start == -1 || end == -1 {
+		return nil
+	}
+
+	data := strings.TrimSpace(logs[start+3 : end])
+
+	return &data
+}
+
+func (r *DatamoverSessionReconciler) getPodLogs(ctx context.Context, pod corev1.Pod, containerName string) (string, error) {
+	config := r.mgr.GetConfig()
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return "", err
+	}
+
+	podLogOpts := corev1.PodLogOptions{Container: containerName}
+	req := clientset.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOpts)
+
+	podLogs, err := req.Stream(ctx)
+	if err != nil {
+		log.Log.Error(err, "Error reading pod logs")
+		return "", errors.New("error in opening stream")
+	}
+
+	defer podLogs.Close()
+
+	buf := new(bytes.Buffer)
+	_, err = io.Copy(buf, podLogs)
+	if err != nil {
+		return "", errors.New("error in copy information from podLogs to buf")
+	}
+	str := buf.String()
+	return str, nil
+}
+
+func sessionDataContainer() corev1.Container {
+	restartAlways := corev1.ContainerRestartPolicyAlways
+	return corev1.Container{
+		Name:  sessionDataContainerName,
+		Image: sessionDataContainerImage,
+		// TODO: this container will run indefinitely. Maybe there is a way to prevent that?
+		Command: []string{
+			"sh",
+			"-c",
+			"echo '---' ; while [ ! -f /etc/session/ready ];" +
+				" do sleep 1; done;" +
+				"if [ -f /etc/session/data ]; then cat /etc/session/data | base64 -w0; fi;" +
+				" echo '___';" +
+				" tail -f /dev/null "},
+		VolumeMounts:   []corev1.VolumeMount{sessionDataVolumeMount()},
+		RestartPolicy:  &restartAlways,
+		ReadinessProbe: readinessProbe(),
+		// TODO: resources limit??
+	}
+}
+
+func readinessProbe() *corev1.Probe {
+	return &corev1.Probe{
+		TimeoutSeconds: sessionDataReadinessTimeout,
+		PeriodSeconds:  sessionDataReadinessInterval,
+		ProbeHandler: corev1.ProbeHandler{
+			Exec: &corev1.ExecAction{
+				Command: []string{"cat", "/etc/session/ready"},
+			},
+		},
+	}
+}
+
+func sessionDataVolumeMount() corev1.VolumeMount {
+	return corev1.VolumeMount{
+		Name:      sessionDataVolumeName,
+		MountPath: sessionDataVolumeMountPoint,
+	}
+}
+
+func sessionDataVolume() ([]corev1.Volume, []corev1.VolumeMount) {
+	volumes := []corev1.Volume{{
+		Name: sessionDataVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			EmptyDir: &corev1.EmptyDirVolumeSource{
+				Medium: corev1.StorageMediumMemory,
+			},
+		},
+	}}
+	volumeMounts := []corev1.VolumeMount{sessionDataVolumeMount()}
+	return volumes, volumeMounts
+}

@@ -1,0 +1,23 @@
+# permissions for end users to view datamoversessions.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: datamover
+    app.kubernetes.io/managed-by: kustomize
+  name: datamoversession-viewer-role
+rules:
+- apiGroups:
+  - dm.cr.kanister.io
+  resources:
+  - datamoversessions
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - dm.cr.kanister.io
+  resources:
+  - datamoversessions/status
+  verbs:
+  - get
