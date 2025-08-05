@@ -47,6 +47,7 @@ var k8sClient client.Client
 var testEnv *envtest.Environment
 var ctx context.Context
 var cancel context.CancelFunc
+var controllerReconciler *DatamoverSessionReconciler
 
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
@@ -88,6 +89,11 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
+	controllerReconciler = &DatamoverSessionReconciler{
+		Client:     k8sClient,
+		Scheme:     k8sClient.Scheme(),
+		RestConfig: *cfg,
+	}
 })
 
 var _ = AfterSuite(func() {

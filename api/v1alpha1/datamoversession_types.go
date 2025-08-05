@@ -22,6 +22,10 @@ import (
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 )
 
+const (
+	DatamoverSessionKind = "DatamoverSession"
+)
+
 // TODO: make the whole thing immutable
 
 // DatamoverSessionSpec defines the desired state of DatamoverSession

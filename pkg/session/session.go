@@ -134,7 +134,7 @@ func Get(ctx context.Context, dynCli dynamic.Interface, sessionName, sessionName
 }
 
 func Create(ctx context.Context, dynCli dynamic.Interface, dmSession api.DatamoverSession) (*api.DatamoverSession, error) {
-	dmSession.Kind = "DatamoverSession"
+	dmSession.Kind = api.DatamoverSessionKind
 	dmSession.APIVersion = api.GroupVersion.String()
 
 	client := dynCli.Resource(api.GroupVersion.WithResource(ResourceName)).Namespace(dmSession.Namespace)

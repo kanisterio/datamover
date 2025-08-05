@@ -65,7 +65,7 @@ func (r *DatamoverSessionReconciler) Run(ctx context.Context, dmSession *api.Dat
 
 	switch state {
 	case Init:
-
+		log.Log.Info("Validating session")
 		err := validateSession(*dmSession)
 		if err != nil {
 			log.Log.Error(err, "Session validation failed")
@@ -198,16 +198,12 @@ func (r *DatamoverSessionReconciler) CreateResources(ctx context.Context, dmSess
 	return nil
 }
 
-func (r *DatamoverSessionReconciler) CleanupResources(ctx context.Context, dmSession *api.DatamoverSession, resources *resources) error {
+func (r *DatamoverSessionReconciler) CleanupService(ctx context.Context, dmSession *api.DatamoverSession, resources *resources) error {
 	if resources == nil {
 		return nil
 	}
-	err := r.CleanupService(ctx, dmSession, resources)
-	if err != nil {
-		return err
-	}
-	if resources.pod != nil {
-		err := r.DeletePod(ctx, resources.pod)
+	if resources.service != nil {
+		err := r.DeleteService(ctx, resources.service)
 		if err != nil {
 			return err
 		}
@@ -215,12 +211,12 @@ func (r *DatamoverSessionReconciler) CleanupResources(ctx context.Context, dmSes
 	return nil
 }
 
-func (r *DatamoverSessionReconciler) CleanupService(ctx context.Context, dmSession *api.DatamoverSession, resources *resources) error {
+func (r *DatamoverSessionReconciler) CleanupPod(ctx context.Context, dmSession *api.DatamoverSession, resources *resources) error {
 	if resources == nil {
 		return nil
 	}
-	if resources.service != nil {
-		err := r.DeleteService(ctx, resources.service)
+	if resources.pod != nil {
+		err := r.DeletePod(ctx, resources.pod)
 		if err != nil {
 			return err
 		}
@@ -511,12 +507,18 @@ func (r *DatamoverSessionReconciler) getReadiness(ctx context.Context, pod corev
 
 func isOwnedBy(controlled metav1.Object, owner api.DatamoverSession) bool {
 	controller := metav1.GetControllerOf(controlled)
+	log.Log.Info("Resource controller", "controller", controller)
 	if controller != nil {
 		controllerGV, err := schema.ParseGroupVersion(controller.APIVersion)
 		if err != nil {
 			return false
 		}
-		return controllerGV.Group == owner.GroupVersionKind().Group && controller.Kind == owner.Kind && controller.Name == owner.Name && controller.UID == owner.UID
+
+		return controllerGV.Group == api.GroupVersion.Group &&
+			controllerGV.Version == api.GroupVersion.Version &&
+			controller.Kind == api.DatamoverSessionKind &&
+			controller.Name == owner.Name &&
+			controller.UID == owner.UID
 	}
 	return false
 }

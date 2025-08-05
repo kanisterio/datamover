@@ -23,12 +23,13 @@ const (
 
 	// TODO: make this configurable
 	sessionDataReadinessTimeout  = 600
-	sessionDataReadinessInterval = 5
+	sessionDataReadinessInterval = 1
 )
 
 // Checking whether session container is started and is passing the probes
 func isPodReady(pod corev1.Pod) bool {
 	if pod.Status.Phase == corev1.PodRunning {
+		log.Log.Info("Pod status is ready now")
 		return mainContainerReady(pod) && sidecarContainerReady(pod)
 	}
 	return false
@@ -97,8 +98,9 @@ func getDataFromLogs(logs string) *string {
 }
 
 func (r *DatamoverSessionReconciler) getPodLogs(ctx context.Context, pod corev1.Pod, containerName string) (string, error) {
-	config := r.mgr.GetConfig()
-	clientset, err := kubernetes.NewForConfig(config)
+	config := r.RestConfig
+	clientset, err := kubernetes.NewForConfig(&config)
+
 	if err != nil {
 		return "", err
 	}

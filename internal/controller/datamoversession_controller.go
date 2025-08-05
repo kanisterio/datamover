@@ -19,12 +19,12 @@ package controller
 import (
 	"context"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
-
-	corev1 "k8s.io/api/core/v1"
 
 	api "github.com/kanisterio/datamover/api/v1alpha1"
 )
@@ -38,8 +38,9 @@ const (
 // DatamoverSessionReconciler reconciles a DatamoverSession object
 type DatamoverSessionReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	mgr    ctrl.Manager
+	Scheme     *runtime.Scheme
+	RestConfig rest.Config
+	mgr        ctrl.Manager
 }
 
 // +kubebuilder:rbac:groups=dm.cr.kanister.io,resources=datamoversessions,verbs=get;list;watch;create;update;patch;delete
