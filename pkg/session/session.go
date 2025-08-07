@@ -17,7 +17,8 @@ import (
 
 const (
 	clusterLocalDomain = "svc.cluster.local"
-	ResourceName       = "datamoversessions"
+	ResourceNamePlural = "datamoversessions"
+	ResourceName       = "datamoversession"
 	waitTimeout        = time.Second * 120
 	waitInterval       = time.Second * 5
 )
