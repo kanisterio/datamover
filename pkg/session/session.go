@@ -118,7 +118,7 @@ func isSessionTerminated(dmSession *api.DatamoverSession) bool {
 }
 
 func Get(ctx context.Context, dynCli dynamic.Interface, sessionName, sessionNamespace string) (*api.DatamoverSession, error) {
-	client := dynCli.Resource(api.GroupVersion.WithResource(ResourceName)).Namespace(sessionNamespace)
+	client := dynCli.Resource(api.GroupVersion.WithResource(ResourceNamePlural)).Namespace(sessionNamespace)
 	us, err := client.Get(ctx, sessionName, metav1.GetOptions{})
 	if err != nil {
 		return nil, err
@@ -138,7 +138,7 @@ func Create(ctx context.Context, dynCli dynamic.Interface, dmSession api.Datamov
 	dmSession.Kind = api.DatamoverSessionKind
 	dmSession.APIVersion = api.GroupVersion.String()
 
-	client := dynCli.Resource(api.GroupVersion.WithResource(ResourceName)).Namespace(dmSession.Namespace)
+	client := dynCli.Resource(api.GroupVersion.WithResource(ResourceNamePlural)).Namespace(dmSession.Namespace)
 	data, err := runtime.DefaultUnstructuredConverter.ToUnstructured(&dmSession)
 	if err != nil {
 		return nil, err
