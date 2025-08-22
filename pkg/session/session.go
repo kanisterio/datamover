@@ -72,6 +72,10 @@ func GetConfig(ctx context.Context, dynCli dynamic.Interface, sessionName, sessi
 	}, nil
 }
 
+func WaitForReadyByName(ctx context.Context, dynCli dynamic.Interface, sessionName, sessionNamespace string) (*api.DatamoverSession, error) {
+	return WaitForReady(ctx, func() (*api.DatamoverSession, error) { return Get(ctx, dynCli, sessionName, sessionNamespace) })
+}
+
 func WaitForReady(ctx context.Context, getFunc func() (*api.DatamoverSession, error)) (*api.DatamoverSession, error) {
 	return WaitForReadyWithTimeout(ctx, getFunc, waitTimeout, waitInterval)
 }

@@ -15,10 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-const (
-	defaultContainerName = "main"
-)
-
 func (r *DatamoverSessionReconciler) CreatePod(ctx context.Context, dmSession api.DatamoverSession) error {
 	podSpec, err := MakePodSpec(dmSession)
 	if err != nil {
@@ -73,7 +69,7 @@ func MakePodSpec(dmSession api.DatamoverSession) (*corev1.Pod, error) {
 
 	mainContainer := corev1.Container{
 		// TODO: make a const
-		Name:  defaultContainerName,
+		Name:  api.DefaultContainerName,
 		Image: dmSession.Spec.LifecycleConfig.Image,
 		// FIXME: ImagePullPolicy
 		ImagePullPolicy: dmSession.Spec.LifecycleConfig.PodOptions.ImagePullPolicy,

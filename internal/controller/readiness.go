@@ -37,7 +37,7 @@ func isPodReady(pod corev1.Pod) bool {
 
 func mainContainerReady(pod corev1.Pod) bool {
 	for _, containerStatus := range pod.Status.ContainerStatuses {
-		if containerStatus.Name == defaultContainerName {
+		if containerStatus.Name == api.DefaultContainerName {
 			// All probes need to succeed
 			return *containerStatus.Started && containerStatus.Ready
 		}

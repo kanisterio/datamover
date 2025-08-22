@@ -13,7 +13,7 @@ resources:
     namespaced: true
   controller: true
   domain: dm.cr.kanister.io
-  group: cr.kanister.io
+  group: dm.cr.kanister.io
   kind: DatamoverSession
   path: github.com/kanisterio/datamover/api/v1alpha1
   version: v1alpha1

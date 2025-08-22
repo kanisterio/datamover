@@ -199,7 +199,7 @@ var _ = Describe("DatamoverSession Controller", func() {
 								PodOptions: api.PodOptions{
 									PodOverride: api.PodOverride{
 										"containers": []map[string]interface{}{{
-											"name":  defaultContainerName,
+											"name":  api.DefaultContainerName,
 											"image": "busybox:latest",
 											"command": []string{
 												"sh",
@@ -358,7 +358,7 @@ var _ = Describe("DatamoverSession Controller", func() {
 								PodOptions: api.PodOptions{
 									PodOverride: api.PodOverride{
 										"containers": []map[string]interface{}{{
-											"name":  defaultContainerName,
+											"name":  api.DefaultContainerName,
 											"image": "busybox:latest",
 											"command": []string{
 												"sh",
@@ -686,7 +686,7 @@ var _ = Describe("DatamoverSession Controller", func() {
 							PodOptions: api.PodOptions{
 								PodOverride: api.PodOverride{
 									"containers": []map[string]interface{}{{
-										"name":    defaultContainerName,
+										"name":    api.DefaultContainerName,
 										"image":   "busybox:latest",
 										"command": []string{"sh", "-c", "exit 1"},
 									}},

@@ -105,7 +105,7 @@ func assertDefaultRestartPolicy(t *testing.T, pod *corev1.Pod) {
 
 func getMainContainer(pod corev1.Pod) *corev1.Container {
 	for _, container := range pod.Spec.Containers {
-		if container.Name == defaultContainerName {
+		if container.Name == api.DefaultContainerName {
 			return &container
 		}
 	}
@@ -121,7 +121,7 @@ func defaultMainContainerChecks(t *testing.T, pod *corev1.Pod, imageName, implem
 		return
 	}
 
-	matcher.Expect(mainContainer.Name).To(gomega.Equal(defaultContainerName))
+	matcher.Expect(mainContainer.Name).To(gomega.Equal(api.DefaultContainerName))
 	matcher.Expect(mainContainer.Image).To(gomega.Equal(imageName))
 	matcher.Expect(mainContainer.Env).To(gomega.ContainElements(corev1.EnvVar{Name: api.ImplementationEnvVarName, Value: implementation}))
 	matcher.Expect(mainContainer.ReadinessProbe).To(gomega.Equal(readinessProbe()))
@@ -425,7 +425,7 @@ func TestMakePodSpecPodOptionsPodOverride(t *testing.T) {
 								"image": "foo",
 							},
 							{
-								"name":  defaultContainerName,
+								"name":  api.DefaultContainerName,
 								"image": "image_override",
 							}},
 						"serviceAccountName": "override_sa",
