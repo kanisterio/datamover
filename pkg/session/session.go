@@ -2,6 +2,8 @@ package session
 
 import (
 	"context"
+	"net"
+	"strconv"
 	"time"
 
 	api "github.com/kanisterio/datamover/api/v1alpha1"
@@ -27,6 +29,23 @@ type SessionConfig struct {
 	Implementation string
 	Service        *corev1.Service
 	SessionData    string
+}
+
+func GetServiceEndpoints(ctx context.Context, dynCli dynamic.Interface, sessionName, sessionNamespace string) (map[string]string, error) {
+	sessionConfig, err := GetConfig(ctx, dynCli, sessionName, sessionNamespace)
+	if err != nil {
+		return nil, err
+	}
+	if sessionConfig.Service == nil {
+		return nil, errors.New("Session config does not have a service")
+	}
+	hostname := sessionConfig.Service.Spec.ClusterIP
+	result := map[string]string{}
+	for _, portSpec := range sessionConfig.Service.Spec.Ports {
+		hostPort := net.JoinHostPort(hostname, strconv.FormatInt(int64(portSpec.Port), 10))
+		result[portSpec.Name] = hostPort
+	}
+	return result, nil
 }
 
 func GetService(ctx context.Context, dynCli dynamic.Interface, dmSession api.DatamoverSession) (*corev1.Service, error) {
