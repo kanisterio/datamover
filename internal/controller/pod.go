@@ -8,6 +8,7 @@ import (
 
 	api "github.com/kanisterio/datamover/api/v1alpha1"
 	"github.com/kanisterio/datamover/pkg/podoverride"
+	"github.com/kanisterio/datamover/pkg/session"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -38,7 +39,7 @@ func (r *DatamoverSessionReconciler) DeletePod(ctx context.Context, pod *corev1.
 }
 
 func MakePodSpec(dmSession api.DatamoverSession) (*corev1.Pod, error) {
-	if err := validateSessionForPod(dmSession); err != nil {
+	if err := session.ValidateSessionForPod(dmSession); err != nil {
 		return nil, errors.Wrap(err, "Session spec is invalid for pod creation")
 	}
 	volumes, mounts := makePodVolumes(dmSession)
@@ -48,8 +49,8 @@ func MakePodSpec(dmSession api.DatamoverSession) (*corev1.Pod, error) {
 		labels = map[string]string{}
 	}
 
-	labels[datamoverSessionSelectorLabel] = dmSession.Name
-	labels[datamoverSessionLabel] = dmSession.Name
+	labels[api.DatamoverSessionSelectorLabel] = dmSession.Name
+	labels[api.DatamoverSessionLabel] = dmSession.Name
 
 	// Create env vars by adding protocols and dmSession address to envs from spec
 	env := dmSession.Spec.Env
@@ -215,19 +216,4 @@ func getSecretVolume(name string, ref corev1.SecretVolumeSource) corev1.Volume {
 		Name:         name,
 		VolumeSource: corev1.VolumeSource{Secret: &ref},
 	}
-}
-
-func validateSessionForPod(dmSession api.DatamoverSession) error {
-	if dmSession.Spec.LifecycleConfig == nil {
-		return errors.New("Can only create pods for lifecycle session")
-	}
-	image := dmSession.Spec.LifecycleConfig.Image
-	implementation := dmSession.Spec.Implementation
-	if implementation == "" {
-		return errors.New("Session must have implementation set")
-	}
-	if image == "" {
-		return errors.New("Session must have lifecycle.image set")
-	}
-	return nil
 }

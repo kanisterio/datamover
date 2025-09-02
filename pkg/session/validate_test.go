@@ -1,4 +1,4 @@
-package controller
+package session
 
 import (
 	api "github.com/kanisterio/datamover/api/v1alpha1"
@@ -7,7 +7,7 @@ import (
 
 func TestValidatePassNoLifecycle(t *testing.T) {
 	session := api.DatamoverSession{}
-	err := validateSession(session)
+	err := ValidateSession(session)
 	if err != nil {
 		t.Errorf("Validation failed %v", err)
 	}
@@ -19,7 +19,7 @@ func TestValidateFailLifecycleNoImplementation(t *testing.T) {
 			LifecycleConfig: &api.LifecycleConfig{},
 		},
 	}
-	err := validateSession(session)
+	err := ValidateSession(session)
 	if err == nil {
 		t.Errorf("Validation without implementation value passed, but should have failed")
 	}
@@ -34,7 +34,7 @@ func TestValidatePassLifecycleNoLabels(t *testing.T) {
 			},
 		},
 	}
-	err := validateSession(session)
+	err := ValidateSession(session)
 	if err != nil {
 		t.Errorf("Validation failed %v", err)
 	}
@@ -54,7 +54,7 @@ func TestValidatePassLifecycleValidLabels(t *testing.T) {
 			},
 		},
 	}
-	err := validateSession(session)
+	err := ValidateSession(session)
 	if err != nil {
 		t.Errorf("Validation failed %v", err)
 	}
@@ -67,15 +67,15 @@ func TestValidateFailLifecycleInValidLabels(t *testing.T) {
 			LifecycleConfig: &api.LifecycleConfig{
 				PodOptions: api.PodOptions{
 					Labels: map[string]string{
-						datamoverSessionSelectorLabel: "value",
+						api.DatamoverSessionSelectorLabel: "value",
 					},
 				},
 			},
 		},
 	}
-	err := validateSession(session)
+	err := ValidateSession(session)
 	if err == nil {
-		t.Errorf("Validation with %s label passed, but should have failed", datamoverSessionSelectorLabel)
+		t.Errorf("Validation with %s label passed, but should have failed", api.DatamoverSessionSelectorLabel)
 	}
 
 	session = api.DatamoverSession{
@@ -84,15 +84,15 @@ func TestValidateFailLifecycleInValidLabels(t *testing.T) {
 			LifecycleConfig: &api.LifecycleConfig{
 				PodOptions: api.PodOptions{
 					Labels: map[string]string{
-						datamoverSessionLabel: "value",
+						api.DatamoverSessionLabel: "value",
 					},
 				},
 			},
 		},
 	}
-	err = validateSession(session)
+	err = ValidateSession(session)
 	if err == nil {
-		t.Errorf("Validation with %v label passed, but should have failed", datamoverSessionLabel)
+		t.Errorf("Validation with %v label passed, but should have failed", api.DatamoverSessionLabel)
 	}
 }
 
@@ -105,7 +105,7 @@ func TestValidatePassNoLifecycleInValidEnv(t *testing.T) {
 			},
 		},
 	}
-	err := validateSession(session)
+	err := ValidateSession(session)
 	if err != nil {
 		t.Errorf("Validation failed")
 	}
@@ -122,7 +122,7 @@ func TestValidateFailLifecycleInValidEnv(t *testing.T) {
 			LifecycleConfig: &api.LifecycleConfig{},
 		},
 	}
-	err := validateSession(session)
+	err := ValidateSession(session)
 	if err == nil {
 		t.Errorf("Validation with %v env passed, but should have failed", api.ProtocolsEnvVarName)
 	}

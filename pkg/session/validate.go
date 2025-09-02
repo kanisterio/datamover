@@ -1,4 +1,4 @@
-package controller
+package session
 
 import (
 	"fmt"
@@ -7,7 +7,7 @@ import (
 	api "github.com/kanisterio/datamover/api/v1alpha1"
 )
 
-func validateSession(dmSession api.DatamoverSession) error {
+func ValidateSession(dmSession api.DatamoverSession) error {
 	// TODO: better chained validation if end up adding more validators
 	// TODO: support validation of non-lifecycle sessions??
 	if dmSession.Spec.LifecycleConfig != nil {
@@ -21,7 +21,7 @@ func validateSession(dmSession api.DatamoverSession) error {
 			return err
 		}
 
-		err = validateSessionForPod(dmSession)
+		err = ValidateSessionForPod(dmSession)
 		if err != nil {
 			return err
 		}
@@ -34,12 +34,12 @@ func validateSession(dmSession api.DatamoverSession) error {
 }
 
 func validatePodLabels(dmSession api.DatamoverSession) error {
-	if dmSession.Spec.LifecycleConfig.PodOptions.Labels[datamoverSessionSelectorLabel] != "" {
-		return fmt.Errorf("Label %s not allowed", datamoverSessionSelectorLabel)
+	if dmSession.Spec.LifecycleConfig.PodOptions.Labels[api.DatamoverSessionSelectorLabel] != "" {
+		return fmt.Errorf("Label %s not allowed", api.DatamoverSessionSelectorLabel)
 	}
 
-	if dmSession.Spec.LifecycleConfig.PodOptions.Labels[datamoverSessionLabel] != "" {
-		return fmt.Errorf("Label %s not allowed", datamoverSessionLabel)
+	if dmSession.Spec.LifecycleConfig.PodOptions.Labels[api.DatamoverSessionLabel] != "" {
+		return fmt.Errorf("Label %s not allowed", api.DatamoverSessionLabel)
 	}
 	return nil
 }
@@ -56,6 +56,21 @@ func validateNetworkPolicyConfig(dmSession api.DatamoverSession) error {
 		if len(dmSession.Spec.LifecycleConfig.ServicePorts) == 0 {
 			return errors.New("ServicePorts should be set to create a network policy")
 		}
+	}
+	return nil
+}
+
+func ValidateSessionForPod(dmSession api.DatamoverSession) error {
+	if dmSession.Spec.LifecycleConfig == nil {
+		return errors.New("Can only create pods for lifecycle session")
+	}
+	image := dmSession.Spec.LifecycleConfig.Image
+	implementation := dmSession.Spec.Implementation
+	if implementation == "" {
+		return errors.New("Session must have implementation set")
+	}
+	if image == "" {
+		return errors.New("Session must have lifecycle.image set")
 	}
 	return nil
 }

@@ -44,13 +44,13 @@ func makeServiceSpec(dmSession api.DatamoverSession, serviceName string) corev1.
 			// TODO: use const here??
 			// TODO: do we want to make labels configurable
 			Labels: map[string]string{
-				"name":                serviceName,
-				datamoverSessionLabel: dmSession.Name,
+				"name":                    serviceName,
+				api.DatamoverSessionLabel: dmSession.Name,
 			},
 		},
 		Spec: corev1.ServiceSpec{
 			Ports:    ports,
-			Selector: map[string]string{datamoverSessionSelectorLabel: dmSession.Name},
+			Selector: map[string]string{api.DatamoverSessionSelectorLabel: dmSession.Name},
 		},
 	}
 }

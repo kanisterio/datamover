@@ -29,12 +29,6 @@ import (
 	api "github.com/kanisterio/datamover/api/v1alpha1"
 )
 
-// FIXME: domain for labels
-const (
-	datamoverSessionSelectorLabel = "datamover/service_label"
-	datamoverSessionLabel         = "datamover/session"
-)
-
 // DatamoverSessionReconciler reconciles a DatamoverSession object
 type DatamoverSessionReconciler struct {
 	client.Client

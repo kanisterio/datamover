@@ -46,16 +46,16 @@ func makeNetworkPolicySpec(dmSession api.DatamoverSession) networkingv1.NetworkP
 			Name:      dmSession.Name,
 			Namespace: dmSession.Namespace,
 			Labels: map[string]string{
-				"name":                        dmSession.Name,
-				datamoverSessionLabel:         dmSession.Name,
-				datamoverSessionSelectorLabel: GetServiceName(dmSession),
+				"name":                            dmSession.Name,
+				api.DatamoverSessionLabel:         dmSession.Name,
+				api.DatamoverSessionSelectorLabel: GetServiceName(dmSession),
 			},
 		},
 		Spec: networkingv1.NetworkPolicySpec{
 			PodSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					datamoverSessionSelectorLabel: dmSession.Name,
-					datamoverSessionLabel:         dmSession.Name,
+					api.DatamoverSessionSelectorLabel: dmSession.Name,
+					api.DatamoverSessionLabel:         dmSession.Name,
 				},
 			},
 			Ingress: []networkingv1.NetworkPolicyIngressRule{

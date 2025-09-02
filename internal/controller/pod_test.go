@@ -93,8 +93,8 @@ func TestMakePodSpecImageAndImplementationValidationSufficient(t *testing.T) {
 func assertDefaultLabels(t *testing.T, pod *corev1.Pod, name string) {
 	matcher := gomega.NewWithT(t)
 	matcher.Expect(pod.ObjectMeta.Labels).To(gstruct.MatchKeys(gstruct.IgnoreExtras, gstruct.Keys{
-		datamoverSessionSelectorLabel: gomega.Equal(name),
-		datamoverSessionLabel:         gomega.Equal(name),
+		api.DatamoverSessionSelectorLabel: gomega.Equal(name),
+		api.DatamoverSessionLabel:         gomega.Equal(name),
 	}))
 }
 

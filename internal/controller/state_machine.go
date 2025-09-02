@@ -6,6 +6,7 @@ import (
 	"time"
 
 	api "github.com/kanisterio/datamover/api/v1alpha1"
+	"github.com/kanisterio/datamover/pkg/session"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -67,7 +68,7 @@ func (r *DatamoverSessionReconciler) Run(ctx context.Context, dmSession *api.Dat
 	switch state {
 	case Init:
 		log.Log.Info("Validating session")
-		err := validateSession(*dmSession)
+		err := session.ValidateSession(*dmSession)
 		if err != nil {
 			log.Log.Error(err, "Session validation failed")
 			err := r.UpdateStatus(ctx, dmSession, api.ProgressValidationFailed)
@@ -465,7 +466,7 @@ func (r *DatamoverSessionReconciler) getPod(ctx context.Context, dmSession *api.
 	podList := &corev1.PodList{}
 	opts := []client.ListOption{
 		client.InNamespace(namespace),
-		client.MatchingLabels{datamoverSessionLabel: dmSession.Name},
+		client.MatchingLabels{api.DatamoverSessionLabel: dmSession.Name},
 	}
 	err := r.List(ctx, podList, opts...)
 	// NOTE: we assume that empty list is returned if there are no error if there are no matching pods
