@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/strategicpatch"
 )
@@ -54,6 +55,9 @@ type LifecycleConfig struct {
 	// Ports to expose via service, service will not be created if empty
 	ServicePorts []corev1.ServicePort `json:"servicePorts,omitempty"`
 
+	// NetworkPolicy controls whether network policy should be created
+	NetworkPolicy NetworkPolicyConfig `json:"networkPolicy,omitempty"`
+
 	// TODO: configurable sidecar readiness timeouts?
 
 	// Extra configurations to pass to session pod
@@ -65,6 +69,12 @@ type LifecycleConfig struct {
 	// Liveness probe to control datamover session lifecycle
 	// More info: https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle#container-probes
 	LivenessProbe *corev1.Probe `json:"livenessProbe,omitempty"`
+}
+
+type NetworkPolicyConfig struct {
+	Enabled bool `json:"enabled,omitempty"`
+
+	From []networkingv1.NetworkPolicyPeer `json:"from,omitempty"`
 }
 
 type PodOptions struct {

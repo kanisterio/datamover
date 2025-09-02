@@ -62,9 +62,12 @@ storage_type=$(cat ${storage_secret}/type)
 
 storage_creds_secret=${secrets_dir}/storage-credentials-secret
 
-# tls_secret=${secrets_dir}/tls-secret
-# tls_crt_file=${tls_secret}/tls.crt
-# tls_key_file=${tls_secret}/tls.key
+## FIXME: optional secret
+tls_cert_secret=${secrets_dir}/tls-cert
+tls_cert_file=${tls_cert_secret}/tls.crt
+
+tls_key_secret=${secrets_dir}/tls-key
+tls_key_file=${tls_key_secret}/tls.key
 
 ## Env variables controlling operation
 ## CREATE_REPO_IF_NOT_EXIST - create repo if it doesn't exist
@@ -251,8 +254,17 @@ server_address=https://0.0.0.0:51515
 ## TODO: readonly, enable-pprof
 ## TODO: --metrics-listen-addr
 
-## Make certs dir
-mkdir /tmp/kopia-cert
+## FIXME: use a different condition (config?) to specify cert source
+if [ -f ${tls_cert_file} ]; then
+    ## Certificate comes from secrets
+    tls_args="--tls-cert-file ${tls_cert_file} --tls-key-file ${tls_key_file}"
+else
+    ## Certificate is generated on server start
+    ## Make certs dir
+    mkdir /tmp/kopia-cert
+    tls_args="--tls-generate-cert --tls-cert-file /tmp/kopia-cert/tls.cert --tls-key-file /tmp/kopia-cert/tls.key"
+    tls_cert_file="/tmp/kopia-cert/tls.cert"
+fi
 
 kopia server start \
     --address=${server_address} \
@@ -264,24 +276,19 @@ kopia server start \
     --server-password=${admin_password} \
     --server-control-username=${admin_username} \
     --server-control-password=${admin_password} \
-    --tls-generate-cert \
-    --tls-cert-file /tmp/kopia-cert/tls.cert \
-    --tls-key-file /tmp/kopia-cert/tls.key \
+    ${tls_args} \
     --log-dir=${logDirectory} \
     --config-file=${configFilePath} &
-
-# --tls-cert-file=${tls_crt_file} \
-# --tls-key-file=${tls_key_file} \
 
 server_pid=$!
 
 ## Advertise server data
 
 ## Wait for cert file first:
-while [ ! -f /tmp/kopia-cert/tls.cert ]; do sleep 1; done
+while [ ! -f ${tls_cert_file} ]; do sleep 1; done
 
 ## TODO: we can also get the fingerprint from server start
-openssl x509 -in /tmp/kopia-cert/tls.cert -noout -fingerprint -sha256 | sed 's/://g' | cut -f 2 -d = > /etc/session/data
+openssl x509 -in ${tls_cert_file} -noout -fingerprint -sha256 | sed 's/://g' | cut -f 2 -d = > /etc/session/data
 
 # Inform startup probes (after writing server data!)
 touch /etc/session/ready

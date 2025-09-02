@@ -12,7 +12,7 @@ import (
 
 func (r *DatamoverSessionReconciler) CreateService(ctx context.Context, dmSession api.DatamoverSession) error {
 	if len(dmSession.Spec.LifecycleConfig.ServicePorts) < 1 {
-		return errors.New("ServicePorts shoudl be set to create service")
+		return errors.New("ServicePorts should be set to create service")
 	}
 	serviceName := GetServiceName(dmSession)
 	svc := makeServiceSpec(dmSession, serviceName)

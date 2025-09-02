@@ -8,6 +8,7 @@ import (
 	api "github.com/kanisterio/datamover/api/v1alpha1"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -195,6 +196,13 @@ func (r *DatamoverSessionReconciler) CreateResources(ctx context.Context, dmSess
 			return err
 		}
 	}
+
+	if resources.networkPolicy == nil && resources.needNetworkPolicy {
+		err := r.CreateNetworkPolicy(ctx, dmSession)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -323,10 +331,12 @@ func (r *DatamoverSessionReconciler) GetState(ctx context.Context, dmSession *ap
 }
 
 type resources struct {
-	pod          *corev1.Pod
-	podReadiness *readiness
-	service      *corev1.Service
-	needService  bool
+	pod               *corev1.Pod
+	podReadiness      *readiness
+	service           *corev1.Service
+	needService       bool
+	networkPolicy     *networkingv1.NetworkPolicy
+	needNetworkPolicy bool
 }
 
 func resourcesEmpty(resources resources) bool {
@@ -347,8 +357,20 @@ func resourcesCleanedUp(resources resources) bool {
 }
 
 func resourcesExist(resources resources) bool {
-	serviceOk := !resources.needService || resources.service != nil
-	return resources.pod != nil && serviceOk
+	log.Log.Info("Resources", "resources", resources)
+	return podExists(resources) && serviceOk(resources) && networkPolicyOk(resources)
+}
+
+func serviceOk(resources resources) bool {
+	return !resources.needService || resources.service != nil
+}
+
+func networkPolicyOk(resources resources) bool {
+	return !resources.needNetworkPolicy || resources.networkPolicy != nil
+}
+
+func podExists(resources resources) bool {
+	return resources.pod != nil
 }
 
 func resourcesReady(resources resources) bool {
@@ -414,14 +436,26 @@ func (r *DatamoverSessionReconciler) getResources(ctx context.Context, dmSession
 		}
 	}
 
+	needNetworkPolicy := dmSession.Spec.LifecycleConfig.NetworkPolicy.Enabled
+	var networkPolicy *networkingv1.NetworkPolicy
+	if needNetworkPolicy {
+		networkPolicy, err = r.getNetworkPolicy(ctx, dmSession)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return &resources{
-		pod:          pod,
-		podReadiness: podReadiness,
-		service:      service,
-		needService:  needService,
+		pod:               pod,
+		podReadiness:      podReadiness,
+		service:           service,
+		needService:       needService,
+		networkPolicy:     networkPolicy,
+		needNetworkPolicy: needNetworkPolicy,
 	}, nil
 }
 
+// FIXME: move these functions to another file
 func (r *DatamoverSessionReconciler) getPod(ctx context.Context, dmSession *api.DatamoverSession) (*corev1.Pod, error) {
 
 	namespace := dmSession.Namespace
@@ -477,6 +511,26 @@ func (r *DatamoverSessionReconciler) getService(ctx context.Context, dmSession *
 	}
 
 	log.Log.Info("Service resource not found.")
+	return nil, nil
+}
+
+func (r *DatamoverSessionReconciler) getNetworkPolicy(ctx context.Context, dmSession *api.DatamoverSession) (*networkingv1.NetworkPolicy, error) {
+	namespace := dmSession.Namespace
+	networkPolicyName := dmSession.Name
+	np := &networkingv1.NetworkPolicy{}
+	err := r.Get(ctx, types.NamespacedName{Name: networkPolicyName, Namespace: namespace}, np)
+	if err == nil {
+		log.Log.Info("Network policy resource exists.")
+		if isOwnedBy(np, *dmSession) {
+			return np, nil
+		} else {
+			return nil, fmt.Errorf("Found network policy not matching owner reference of the session. In namespace %s, session %s", namespace, dmSession.Name)
+		}
+	}
+	if !apierrors.IsNotFound(err) {
+		return nil, err
+	}
+	log.Log.Info("Network policy resource not found.")
 	return nil, nil
 }
 

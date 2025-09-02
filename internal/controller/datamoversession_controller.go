@@ -50,6 +50,7 @@ type DatamoverSessionReconciler struct {
 // +kubebuilder:rbac:groups="",resources=pods/ephemeralcontainers,verbs=*
 // +kubebuilder:rbac:groups="",resources=pods/log,verbs=*
 // +kubebuilder:rbac:groups="",resources=services,verbs=*
+// +kubebuilder:rbac:groups="networking.k8s.io",resources=networkpolicies,verbs=*
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

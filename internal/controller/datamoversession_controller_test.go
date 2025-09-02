@@ -667,6 +667,75 @@ var _ = Describe("DatamoverSession Controller", func() {
 					})
 				})
 			})
+
+			When("There there is a network policy are ports", func() {
+				BeforeEach(func() {
+					By("Configuring valid resource")
+					resource = &api.DatamoverSession{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      resourceName,
+							Namespace: "default",
+						},
+						Spec: api.DatamoverSessionSpec{
+							Implementation: "noop",
+							LifecycleConfig: &api.LifecycleConfig{
+								Image: "datamover/noop-session:dev",
+								ServicePorts: []corev1.ServicePort{
+									{Name: "something", Port: 2000},
+								},
+								NetworkPolicy: api.NetworkPolicyConfig{
+									Enabled: true,
+								},
+								PodOptions: api.PodOptions{
+									PodOverride: api.PodOverride{
+										"containers": []map[string]interface{}{{
+											"name":  api.DefaultContainerName,
+											"image": "busybox:latest",
+											"command": []string{
+												"sh",
+												"-c",
+												"echo foo > /etc/session/ready && while [ -f /etc/session/ready ]; do sleep 1; done; exit 1",
+											},
+										}},
+									},
+								},
+							},
+						},
+					}
+				})
+				It("should successfully reconcile", func() {
+					By("Reconciling the created resource")
+
+					result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+						NamespacedName: typeNamespacedName,
+					})
+					Expect(err).NotTo(HaveOccurred())
+
+					By("Setting result to requeue")
+					Expect(result.Requeue).To(BeTrue())
+
+					By("Not Expecting the status to be set")
+					resource := &api.DatamoverSession{}
+					err = k8sClient.Get(ctx, typeNamespacedName, resource)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(resource.Status.Progress).To(Equal(api.ProgressNone))
+
+					By("Creating a pod")
+					pod, err := controllerReconciler.getPod(ctx, resource)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(pod).To(Not(BeNil()))
+
+					By("Creating a service")
+					service, err := controllerReconciler.getService(ctx, resource)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(service).To(Not(BeNil()))
+
+					By("Creating a network policy")
+					np, err := controllerReconciler.getNetworkPolicy(ctx, resource)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(np).To(Not(BeNil()))
+				})
+			})
 		})
 		Describe("When pod fails to start", func() {
 			BeforeEach(func() {
@@ -696,7 +765,7 @@ var _ = Describe("DatamoverSession Controller", func() {
 					},
 				}
 			})
-			It("should successfully reconcile", func() {
+			It("should reconcile into failure", func() {
 				By("Reconciling the created resource")
 
 				result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
