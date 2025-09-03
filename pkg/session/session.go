@@ -183,3 +183,8 @@ func Create(ctx context.Context, dynCli dynamic.Interface, dmSession api.Datamov
 	}
 	return &dataMoverSession, nil
 }
+
+func Delete(ctx context.Context, dynCli dynamic.Interface, dmSession api.DatamoverSession) error {
+	client := dynCli.Resource(api.GroupVersion.WithResource(ResourceNamePlural)).Namespace(dmSession.Namespace)
+	return client.Delete(ctx, dmSession.Name, metav1.DeleteOptions{})
+}

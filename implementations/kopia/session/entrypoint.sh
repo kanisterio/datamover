@@ -195,6 +195,7 @@ elif [[ "${storage_type}" == "filesystem" ]]; then
     storage_path=$(cat ${storage_secret}/path)
     storage_mount="/mnt/volumes/data"
 
+    ## FIXME: rootPath for repo prefix!!
     storage_path_full="${storage_mount}/${storage_path}"
 
     ## FIXME: delete this??
