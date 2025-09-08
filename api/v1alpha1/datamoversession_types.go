@@ -128,6 +128,7 @@ type SessionInfo struct {
 	// TODO: we can also record timestamp on when data was last updated
 	// taking it from the file metadata
 	SessionData string `json:"data,omitempty"`
+	PodErrors   string `json:"podErrors,omitempty"`
 }
 
 // DatamoverSessionProgress is the field users would check to know the state of DatamoverSession

@@ -274,6 +274,7 @@ var _ = Describe("DatamoverSession Controller", func() {
 
 					})
 				})
+				// FIXME: add tests to check pod errors
 				When("Waiting for resources to be ready", func() {
 					It("should successfully reconcile", func() {
 						By("Reconciling the created resource once")

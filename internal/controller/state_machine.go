@@ -87,14 +87,14 @@ func (r *DatamoverSessionReconciler) Run(ctx context.Context, dmSession *api.Dat
 		return requeue_wait_sec(20), nil
 	case ValidationFailed:
 		return ctrl.Result{}, nil
-	case CreateResourcesSuccess:
-		err := r.UpdateStatus(ctx, dmSession, api.ProgressResourcesCreated)
+	case CreateResourcesInProgress:
+		err := r.tryCreateResources(ctx, *dmSession, resources)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
-	case CreateResourcesInProgress:
-		err := r.tryCreateResources(ctx, *dmSession, resources)
+	case CreateResourcesSuccess:
+		err := r.UpdateStatusResources(ctx, dmSession, api.ProgressResourcesCreated, *resources)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -112,7 +112,7 @@ func (r *DatamoverSessionReconciler) Run(ctx context.Context, dmSession *api.Dat
 		return ctrl.Result{}, nil
 
 	case ReadinessResourcesFailure:
-		err := r.UpdateStatus(ctx, dmSession, api.ProgressReadinessFailure)
+		err := r.UpdateStatusFailure(ctx, dmSession, api.ProgressReadinessFailure, resources)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -145,7 +145,7 @@ func (r *DatamoverSessionReconciler) Run(ctx context.Context, dmSession *api.Dat
 		return ctrl.Result{}, nil
 
 	case SessionResourcesFailure:
-		err := r.UpdateStatus(ctx, dmSession, api.ProgressSessionFailure)
+		err := r.UpdateStatusFailure(ctx, dmSession, api.ProgressSessionFailure, resources)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -240,6 +240,56 @@ func (r *DatamoverSessionReconciler) UpdateStatus(ctx context.Context, dmSession
 		return err
 	}
 	log.Log.Info("Updated status to", "status", status)
+	return nil
+}
+
+func (r *DatamoverSessionReconciler) UpdateStatusResources(ctx context.Context, dmSession *api.DatamoverSession, status api.DatamoverSessionProgress, resources resources) error {
+	dmSession.Status.Progress = status
+	serviceName := ""
+	if resources.service != nil {
+		serviceName = resources.service.Name
+	}
+	if resources.pod == nil {
+		return fmt.Errorf("Invalid state. Pod should exist at this point")
+	}
+
+	dmSession.Status.SessionInfo = api.SessionInfo{
+		PodName:     resources.pod.Name,
+		ServiceName: serviceName,
+		SessionData: "",
+	}
+	if err := r.Status().Update(ctx, dmSession); err != nil {
+		// TODO: wrap error
+		return err
+	}
+	return nil
+}
+
+func (r *DatamoverSessionReconciler) UpdateStatusFailure(ctx context.Context, dmSession *api.DatamoverSession, status api.DatamoverSessionProgress, resources *resources) error {
+	dmSession.Status.Progress = status
+	serviceName := dmSession.Status.SessionInfo.ServiceName
+	if resources != nil && resources.service != nil {
+		serviceName = resources.service.Name
+	}
+	podName := dmSession.Status.SessionInfo.PodName
+	podErrors := dmSession.Status.SessionInfo.PodErrors
+	var err error
+	if resources != nil && resources.pod != nil {
+		podName = resources.pod.Name
+		podErrors, err = r.getPodErrors(ctx, podName, dmSession.Namespace)
+		if err != nil {
+			log.Log.Error(err, "cannot fetch pod errors")
+		}
+	}
+
+	dmSession.Status.SessionInfo.PodName = podName
+	dmSession.Status.SessionInfo.ServiceName = serviceName
+	dmSession.Status.SessionInfo.PodErrors = podErrors
+
+	if err := r.Status().Update(ctx, dmSession); err != nil {
+		// TODO: wrap error
+		return err
+	}
 	return nil
 }
 

@@ -113,10 +113,13 @@ func WaitForReadyWithTimeout(ctx context.Context, getFunc func() (*api.Datamover
 			return session, nil
 		}
 		if isSessionTerminated(session) {
-			return session, errors.New("session terminated")
+			// FIXME: use errkit instead of errors
+			errorLogs := session.Status.SessionInfo.PodErrors
+			return session, errors.New("session terminated: " + errorLogs)
 		}
 		if doneWaiting {
-			return session, errors.New("timeout waiting for session ti be ready")
+			errorLogs := session.Status.SessionInfo.PodErrors
+			return session, errors.New("timeout waiting for session to be ready: " + errorLogs)
 		}
 		select {
 		case <-waitCtx.Done():

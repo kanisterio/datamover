@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"io"
@@ -71,7 +72,7 @@ func (r *DatamoverSessionReconciler) fetchSessionData(ctx context.Context, pod c
 func (r *DatamoverSessionReconciler) fetchSessionDataUsingSidecar(ctx context.Context, pod corev1.Pod) (*string, error) {
 	for _, containerStatus := range pod.Status.InitContainerStatuses {
 		if containerStatus.Name == sessionDataContainerName {
-			logs, err := r.getPodLogs(ctx, pod, sessionDataContainerName)
+			logs, err := r.getContainerLogs(ctx, pod.Name, pod.Namespace, sessionDataContainerName)
 			if err != nil {
 				return nil, errors.Wrap(err, "Failed to read pod logs")
 			}
@@ -98,23 +99,33 @@ func getDataFromLogs(logs string) *string {
 	return &data
 }
 
-func (r *DatamoverSessionReconciler) getPodLogs(ctx context.Context, pod corev1.Pod, containerName string) (string, error) {
-	config := r.RestConfig
-	clientset, err := kubernetes.NewForConfig(&config)
-
+func (r *DatamoverSessionReconciler) getPodErrors(ctx context.Context, podName, podNamespace string) (string, error) {
+	podLogs, err := r.getContainerLogsReader(ctx, podName, podNamespace, api.DefaultContainerName)
 	if err != nil {
 		return "", err
 	}
+	defer podLogs.Close()
 
-	podLogOpts := corev1.PodLogOptions{Container: containerName}
-	req := clientset.CoreV1().Pods(pod.Namespace).GetLogs(pod.Name, &podLogOpts)
-
-	podLogs, err := req.Stream(ctx)
-	if err != nil {
-		log.Log.Error(err, "Error reading pod logs")
-		return "", errors.New("error in opening stream")
+	errorLines := []string{}
+	scanner := bufio.NewScanner(podLogs)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if isErrorLine(line) {
+			errorLines = append(errorLines, line)
+		}
 	}
+	return strings.Join(errorLines, "\n"), nil
+}
 
+func isErrorLine(line string) bool {
+	return strings.Contains(line, "ERROR")
+}
+
+func (r *DatamoverSessionReconciler) getContainerLogs(ctx context.Context, podName, podNamespace, containerName string) (string, error) {
+	podLogs, err := r.getContainerLogsReader(ctx, podName, podNamespace, containerName)
+	if err != nil {
+		return "", err
+	}
 	defer podLogs.Close()
 
 	buf := new(bytes.Buffer)
@@ -124,6 +135,25 @@ func (r *DatamoverSessionReconciler) getPodLogs(ctx context.Context, pod corev1.
 	}
 	str := buf.String()
 	return str, nil
+}
+
+func (r *DatamoverSessionReconciler) getContainerLogsReader(ctx context.Context, podName, podNamespace, containerName string) (io.ReadCloser, error) {
+	config := r.RestConfig
+	clientset, err := kubernetes.NewForConfig(&config)
+
+	if err != nil {
+		return nil, err
+	}
+
+	podLogOpts := corev1.PodLogOptions{Container: containerName}
+	req := clientset.CoreV1().Pods(podNamespace).GetLogs(podName, &podLogOpts)
+
+	podLogs, err := req.Stream(ctx)
+	if err != nil {
+		log.Log.Error(err, "Error reading pod logs")
+		return nil, errors.New("error in opening stream")
+	}
+	return podLogs, nil
 }
 
 func sessionDataContainer() corev1.Container {

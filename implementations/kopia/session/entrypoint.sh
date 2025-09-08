@@ -50,17 +50,17 @@ read_only=$(cat ${config_dir}/readOnly || echo "false")
 
 ## Read secret configurations
 secrets_dir=/etc/secrets
-repo_secret=${secrets_dir}/repo-access-secret
+repo_secret=${secrets_dir}/repo-access
 repo_password=$(cat ${repo_secret}/password)
 
-admin_secret=${secrets_dir}/admin-secret
+admin_secret=${secrets_dir}/admin
 admin_password=$(cat ${admin_secret}/password)
 admin_username=$(cat ${admin_secret}/username)
 
-storage_secret=${secrets_dir}/storage-secret
+storage_secret=${secrets_dir}/storage
 storage_type=$(cat ${storage_secret}/type)
 
-storage_creds_secret=${secrets_dir}/storage-credentials-secret
+storage_creds_secret=${secrets_dir}/storage-credentials
 
 ## FIXME: optional secret
 tls_cert_secret=${secrets_dir}/tls-cert

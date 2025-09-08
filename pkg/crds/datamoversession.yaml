@@ -4226,6 +4226,8 @@ spec:
                   data:
                     description: taking it from the file metadata
                     type: string
+                  podErrors:
+                    type: string
                   podName:
                     type: string
                   serviceName:
