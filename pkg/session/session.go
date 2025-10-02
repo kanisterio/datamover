@@ -114,8 +114,9 @@ func WaitForReadyWithTimeout(ctx context.Context, getFunc func() (*api.Datamover
 		}
 		if isSessionTerminated(session) {
 			// FIXME: use errkit instead of errors
+			status := session.Status.Progress
 			errorLogs := session.Status.SessionInfo.PodErrors
-			return session, errors.New("session terminated: " + errorLogs)
+			return session, errors.New("session terminated: " + string(status) + " " + errorLogs)
 		}
 		if doneWaiting {
 			errorLogs := session.Status.SessionInfo.PodErrors

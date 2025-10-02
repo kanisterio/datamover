@@ -4,12 +4,14 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"strings"
 
 	api "github.com/kanisterio/datamover/api/v1alpha1"
 	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -100,9 +102,32 @@ func getDataFromLogs(logs string) *string {
 }
 
 func (r *DatamoverSessionReconciler) getPodErrors(ctx context.Context, podName, podNamespace string) (string, error) {
-	podLogs, err := r.getContainerLogsReader(ctx, podName, podNamespace, api.DefaultContainerName)
+	var pod corev1.Pod
+	err := r.Get(ctx, types.NamespacedName{Name: podName, Namespace: podNamespace}, &pod)
 	if err != nil {
 		return "", err
+	}
+
+	containerErrors := ""
+
+	for _, conStatus := range pod.Status.ContainerStatuses {
+		if conStatus.Name == api.DefaultContainerName && !conStatus.Ready {
+			if conStatus.State.Waiting != nil {
+				containerErrors = fmt.Sprintf("Waiting to run main container: %s %s",
+					conStatus.State.Waiting.Reason,
+					conStatus.State.Waiting.Message)
+			}
+			if conStatus.State.Terminated != nil {
+				containerErrors = fmt.Sprintf("Main container terminated: %s %s",
+					conStatus.State.Terminated.Reason,
+					conStatus.State.Terminated.Message)
+
+			}
+		}
+	}
+	podLogs, err := r.getContainerLogsReader(ctx, podName, podNamespace, api.DefaultContainerName)
+	if err != nil {
+		return containerErrors, err
 	}
 	defer podLogs.Close()
 
@@ -114,7 +139,7 @@ func (r *DatamoverSessionReconciler) getPodErrors(ctx context.Context, podName, 
 			errorLines = append(errorLines, line)
 		}
 	}
-	return strings.Join(errorLines, "\n"), nil
+	return containerErrors + "\n" + strings.Join(errorLines, "\n"), nil
 }
 
 func isErrorLine(line string) bool {
