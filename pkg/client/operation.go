@@ -1,6 +1,7 @@
 package client
 
 import (
+	"fmt"
 	"path"
 
 	corev1 "k8s.io/api/core/v1"
@@ -248,7 +249,7 @@ func (sidecar FileSystemSidecarOperation) MakeInitContainers() []corev1.Containe
 func streamInitContainer(initImage string) corev1.Container {
 	return corev1.Container{
 		Name:         "initstreamfile",
-		Command:      []string{"mkfifo", streamFileName()},
+		Command:      []string{"sh", "-c", fmt.Sprintf("mkfifo %s; chmod 666 %s", streamFileName(), streamFileName())},
 		Image:        streamInitImage(initImage),
 		VolumeMounts: []corev1.VolumeMount{streamVolumeMount()},
 	}
